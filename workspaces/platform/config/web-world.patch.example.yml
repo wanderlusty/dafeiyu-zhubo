@@ -1,0 +1,20 @@
+- id: dsh-world
+  name: dsh-world
+  config:
+    companionName: 小白
+    partnerName: 主人
+    worldId: ds
+    timeZone: Asia/Shanghai
+    life: true
+    bridge: true
+    qqNative:
+      enabled: false
+      wsUrl: ws://127.0.0.1:3001
+      accessToken: ''
+      allowPrivate: []
+      ownerQQ: ''
+      allowGroups: []
+      autoReply: false
+      bindHomeSession: owner
+      snowlumaHome: ''
+      supervise: false

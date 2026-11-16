@@ -1,0 +1,9 @@
+{
+  "repo": "/path/to/cosyvoice/source",
+  "model": "/path/to/Fun-CosyVoice3-0.5B-2512",
+  "reference": "/path/to/authorized-reference.wav",
+  "prompt_text": "用于参考音频的准确转写文本。",
+  "delivery": "请自然地说话。",
+  "rvc_url": "http://127.0.0.1:7392/convert",
+  "port": 7391
+}

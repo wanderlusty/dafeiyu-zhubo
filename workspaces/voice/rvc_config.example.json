@@ -1,0 +1,7 @@
+{
+  "repo": "/path/to/rvc/source",
+  "model": "/path/to/authorized-model.pth",
+  "index": "/path/to/authorized-model.index",
+  "index_rate": 0.6,
+  "port": 7392
+}

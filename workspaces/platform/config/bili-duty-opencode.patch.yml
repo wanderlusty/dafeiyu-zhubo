@@ -1,0 +1,14 @@
+# OpenCode Go 的 DeepSeek V4.1 Flash；只引用凭据名，API Key 保存在 DSH 的凭据库。
+- id: llm-pi-ai
+  config:
+    providers:
+      opencode-go:
+        models:
+          - id: deepseek-v4.1-flash
+            name: DeepSeek V4.1 Flash
+            contextWindow: 1000000
+            maxTokens: 384000
+            input:
+              - text
+              - image
+        apiKeyEnv: OPENCODE_GO_API_KEY
