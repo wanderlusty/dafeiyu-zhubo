@@ -48,6 +48,11 @@ workspaces/platform/config/bili-duty.readonly.json
 *.pem
 *.p12
 *.key
+qqbot.env
+allowed-openids.json
+pending-openids.json
+gateway-session.json
+qq-bridge.json
 *.log
 *.tgz
 *.zip

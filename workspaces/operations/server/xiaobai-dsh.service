@@ -1,0 +1,22 @@
+[Unit]
+Description=XiaoBai DSH world and QQ bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xiaobai
+Group=xiaobai
+WorkingDirectory=/srv/xiaobai/app
+Environment=HOME=/home/xiaobai
+Environment=DSH_HOME=/srv/xiaobai/data/dsh
+EnvironmentFile=/srv/xiaobai/data/opencode.env
+ExecStart=/usr/local/bin/npx --yes @deepseek-ai/dsh@0.2.1-rc.5 web --host 127.0.0.1 --port 3081 --no-open
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

@@ -25,10 +25,62 @@ if (-not $source.Contains($after)) {
 $template = [System.IO.File]::ReadAllText($templatePath, [System.Text.Encoding]::UTF8)
 $marker = '# Local OpenCode Go provider for bili-duty'
 if (-not $template.Contains($marker)) {
-    if ($template -match '(?m)^- id: llm-pi-ai\s*$') { throw 'Existing llm-pi-ai template entry; inspect before patching' }
-    $provider = [System.IO.File]::ReadAllText($providerPath, [System.Text.Encoding]::UTF8).Trim()
-    $template = $template.TrimEnd() + "`n`n" + $marker + "`n" + $provider + "`n"
-    [System.IO.File]::WriteAllText($templatePath, $template, $utf8NoBom)
+    if ($template -match '(?m)^- id: llm-pi-ai\s*$') {
+        if ($template -notmatch '(?m)^      opencode-go:\s*$' -or $template -notmatch '(?m)^        apiKeyEnv: OPENCODE_GO_API_KEY\s*$') {
+            throw 'Existing llm-pi-ai template entry is not the expected OpenCode Go provider'
+        }
+    } else {
+        $provider = [System.IO.File]::ReadAllText($providerPath, [System.Text.Encoding]::UTF8).Trim()
+        $template = $template.TrimEnd() + "`n`n" + $marker + "`n" + $provider + "`n"
+        [System.IO.File]::WriteAllText($templatePath, $template, $utf8NoBom)
+    }
+}
+
+# Match the web profile's reasoning setting in the unattended Bilibili duty
+# profile and its reinstall template.
+$dutyProfilePath = Join-Path $env:DSH_HOME 'profiles\bili-duty\cordis.patch.yml'
+$dutyModelPattern = [regex]'(?m)^(- id: agent-default-model\r?\n  config:\r?\n    provider: opencode-go\r?\n    model: deepseek-v4\.1-flash)(?:\r?\n    reasoningEffort: [^\r\n]+)?'
+foreach ($profilePath in @($dutyProfilePath, $templatePath)) {
+    if (-not (Test-Path -LiteralPath $profilePath)) { continue }
+    $profileText = [System.IO.File]::ReadAllText($profilePath, [System.Text.Encoding]::UTF8)
+    if ($dutyModelPattern.Matches($profileText).Count -ne 1) {
+        throw "Expected one OpenCode Go duty model in $profilePath"
+    }
+    $profileText = $dutyModelPattern.Replace($profileText, [System.Text.RegularExpressions.MatchEvaluator]{
+        param($match)
+        $lineEnding = if ($match.Value.Contains("`r`n")) { "`r`n" } else { "`n" }
+        $match.Groups[1].Value + $lineEnding + '    reasoningEffort: high'
+    }, 1)
+    [System.IO.File]::WriteAllText($profilePath, $profileText, $utf8NoBom)
+}
+
+# A private endpoint override survives reinstalling the Bilibili plugin. The
+# API key stays in DSH's ignored credential store, never in this source file.
+$endpointPath = Join-Path $project 'local-data\accounts\opencode-go-base-url.txt'
+if (Test-Path -LiteralPath $endpointPath) {
+    $baseUrl = [System.IO.File]::ReadAllText($endpointPath, [System.Text.Encoding]::UTF8).Trim()
+    $uri = $null
+    if (-not [Uri]::TryCreate($baseUrl, [UriKind]::Absolute, [ref]$uri) -or $uri.Scheme -ne 'https') {
+        throw "Invalid OpenCode Go endpoint in $endpointPath"
+    }
+    $profilePaths = @(
+        (Join-Path $env:DSH_HOME 'profiles\web\cordis.patch.yml'),
+        (Join-Path $env:DSH_HOME 'profiles\bili-duty\cordis.patch.yml'),
+        $templatePath
+    )
+    $routePattern = [regex]'(?m)^(      opencode-go:)(\r?\n)(?:        baseURL:[^\r\n]*(\r?\n))?'
+    foreach ($profilePath in $profilePaths) {
+        if (-not (Test-Path -LiteralPath $profilePath)) { continue }
+        $profileText = [System.IO.File]::ReadAllText($profilePath, [System.Text.Encoding]::UTF8)
+        if ($routePattern.Matches($profileText).Count -ne 1) {
+            throw "Expected one OpenCode Go route in $profilePath"
+        }
+        $profileText = $routePattern.Replace($profileText, [System.Text.RegularExpressions.MatchEvaluator]{
+            param($match)
+            $match.Groups[1].Value + $match.Groups[2].Value + '        baseURL: ' + $baseUrl + $match.Groups[2].Value
+        }, 1)
+        [System.IO.File]::WriteAllText($profilePath, $profileText, $utf8NoBom)
+    }
 }
 
 Write-Host 'OpenCode Go profile patch ready. Restart DSH web to load it.'

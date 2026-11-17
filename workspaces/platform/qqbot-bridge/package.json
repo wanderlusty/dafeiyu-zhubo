@@ -1,0 +1,13 @@
+{
+  "name": "xiaobai-qqbot-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node main.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@tencent-connect/qqbot-nodejs": "1.0.5",
+    "ws": "^8.21.0"
+  }
+}

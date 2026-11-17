@@ -1,5 +1,7 @@
 # 接手说明（2026-11-15）
 
+2026-11-17 的续接进度、官方 QQ Bot 状态和 GitHub 私有备份核验步骤见 [`CONTINUATION-2026-11-17.md`](CONTINUATION-2026-11-17.md)。
+
 ## 项目结构
 
 | 路径 | 用途 |
@@ -8,6 +10,7 @@
 | `workspaces/voice/` | TTS、RVC、点歌、分离与训练脚本；配置示例可公开，样音和模型不公开。 |
 | `workspaces/platform/config/` | DSH、刷 B 站和世界设定模板。带 `.example` 的文件可公开；本机配置已被忽略。 |
 | `workspaces/platform/patches/` | 对上游直播插件源码的本地功能改动，包括新增文件。 |
+| `workspaces/platform/qqbot-bridge/` | 腾讯官方 QQ Bot 私聊适配器；服务器端服务与私有凭据说明见 `docs/DEPLOYMENT.md`。 |
 | `workspaces/operations/` | Windows 安装、启动和检查脚本；根目录只保留三个双击入口。 |
 | `local-data/` | 本机依赖、权重、生成物、样音、虚拟环境和账号状态；均不进仓库。根目录旧路径是隐藏目录联接。 |
 | `docs/history/` | 早期调研和验收记录；其中的旧路径以本说明为准。 |
@@ -42,7 +45,7 @@ pnpm --dir packages/dsh-livestream build
 
 ## 已知未完成项
 
-1. 服务器版没有做。Windows/WSL 路径、直播画面采集、TTS/RVC GPU 部署、QQ 接入和 B 站登录都要适配。
+1. ECS 已有最小后台部署，包含 DSH、角色记忆与 QQ OneBot 容器；普通 QQ 曾掉线并需手机身份验证。官方 QQ Bot 适配器已准备但还未获取平台凭据或真实验收。当前状态以 `docs/DEPLOYMENT.md` 为准。Windows/WSL 路径、直播画面采集、TTS/RVC GPU 部署和 B 站登录仍未迁移。
 2. 当前控制台只允许本机访问；不能直接把 3090 端口暴露到公网。
 3. 点歌获取、分离、换声与播放依赖本地模型及下载工具；`README` 中的历史成功案例不代表每首歌都能稳定生成。
 4. 上游插件源码与本地补丁需一起构建，不能只安装公开 npm 版就获得小白的功能。
