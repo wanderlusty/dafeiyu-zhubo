@@ -35,14 +35,14 @@ body = '\n'.join((
 ))
 target = PRIVATE / 'qqbot.env'
 temp = PRIVATE / 'qqbot.env.tmp'
-with temp.open('w', encoding='utf-8', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
+with open(temp, 'w', encoding='utf-8', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
     output.write(body)
 os.chmod(temp, 0o600)
 os.replace(temp, target)
 for name, default in (('allowed-openids.json', '[]\n'), ('pending-openids.json', '{}\n')):
     file = PRIVATE / name
     if not file.exists():
-        with file.open('w', encoding='utf-8', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
+        with open(file, 'w', encoding='utf-8', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
             output.write(default)
     os.chmod(file, 0o600)
 uid = __import__('pwd').getpwnam('xiaobai').pw_uid
