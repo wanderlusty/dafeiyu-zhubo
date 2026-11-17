@@ -38,9 +38,9 @@ QQ 使用 `ghcr.io/napneko/nodenapcat:latest` 镜像，镜像摘要为 `sha256:4
 
 2026-11-17 白天发现普通 QQ 小号在服务器上掉线：DSH 服务与 NapCat 容器都还在运行，但 OneBot WebSocket 已断开，手机登录又要求身份验证。用户扫码后普通 QQ 暂时恢复连接；这不能算 24 小时稳定性验收。不要仅凭 systemd / Docker 的“运行中”推断 QQ 能回复。
 
-正在准备腾讯开放平台官方 QQ Bot 接入。适配器源码在 `workspaces/platform/qqbot-bridge/`，使用腾讯官方 Node SDK 接收 C2C 私聊，再经 DSH 本地桥送进小白角色工作区。ECS 上已安装依赖并通过模拟桥测试，DSH 桥端口 `127.0.0.1:3210` 已监听；`xiaobai-qqbot.service` **已安装但保持 disabled/inactive**。尚未创建官方机器人、没有 AppID/AppSecret，也未进行官方 QQ 实际收发验收。普通 QQ 小号保持原配置。官方机器人是新身份，不会继承原普通 QQ 小号的好友关系。
+正在准备腾讯开放平台官方 QQ Bot 接入。适配器源码在 `workspaces/platform/qqbot-bridge/`，使用腾讯官方 Node SDK 接收 C2C 私聊，再经 DSH 本地桥送进小白角色工作区。ECS 上已安装依赖并通过模拟桥测试，DSH 桥端口 `127.0.0.1:3210` 已监听；`xiaobai-qqbot.service` **已安装但保持 disabled/inactive**。用户已在开放平台创建“小白”机器人；截至本记录尚未录入私有 AppID/AppSecret，也未进行官方 QQ 实际收发验收。普通 QQ 小号保持原配置。官方机器人是新身份，不会继承原普通 QQ 小号的好友关系。
 
-创建机器人后按 [`QQ Bot 接入说明`](../workspaces/platform/qqbot-bridge/README.md) 启用 C2C，接着在 ECS Workbench 终端运行 `python3 /srv/xiaobai/app/workspaces/operations/server/configure-qqbot-credentials.py`，在终端里输入 AppID 和隐藏输入的 AppSecret；**不要把 AppSecret 发到聊天或写进 Git**。脚本将从 DSH 私有世界目录读取桥口令，写入权限 `0600` 的 `/srv/xiaobai/data/qqbot/qqbot.env`。然后才可启动官方 Bot 服务，并先核对发送者 openid、加入私有白名单、实测回复与重启恢复。未通过这些步骤前，不要停用旧接入。
+创建机器人后按 [`QQ Bot 接入说明`](../workspaces/platform/qqbot-bridge/README.md) 启用 C2C，接着在 ECS Workbench 终端运行 `python3 /srv/xiaobai/app/workspaces/operations/server/configure-qqbot-credentials.py`，在终端里输入 AppID 和隐藏输入的 AppSecret；**不要把 AppSecret 发到聊天或写进 Git**。脚本将从 DSH 私有世界目录读取桥口令，写入权限 `0600` 的 `/srv/xiaobai/data/qqbot/qqbot.env`。然后才可启动官方 Bot 服务，并先核对发送者 openid、加入私有白名单、实测回复与重启恢复。用户要求官方 Bot 与普通 QQ 小号并行运行；启用官方 Bot 后也保留旧接入。
 
 本机 SSH 隧道将 `127.0.0.1:6099` 转发到服务器 QQ WebUI，将 `127.0.0.1:13081` 转发到服务器 DSH。Workbench 网页终端断开不影响已建立的 SSH 通道或 systemd 服务。
 
@@ -49,8 +49,13 @@ QQ 使用 `ghcr.io/napneko/nodenapcat:latest` 镜像，镜像摘要为 `sha256:4
 ```bash
 systemctl status xiaobai-dsh.service
 docker ps --filter name=xiaobai-napcat
+node /srv/xiaobai/app/workspaces/operations/server/check-onebot.mjs
+node /srv/xiaobai/app/workspaces/operations/server/check-qq.mjs
+systemctl is-active xiaobai-qqbot.service
 ss -ltn | grep -E ':(3081|3001|6099) '
 ```
+
+`check-onebot.mjs` 用私有 OneBot 配置的令牌在回环 WebSocket 调用 `get_login_info`，仅输出是否登录，不输出 QQ 号或令牌。`check-qq.mjs` 再核对 DSH 通道与自动回复；只有两项都通过，普通 QQ 才算当前可用。它们不能证明未来 24 小时不会触发平台身份验证。官方 Bot 需另外以真实私聊和重启后重测验收。
 
 这只是 **24 小时在线后台**。直播间、TTS/RVC、浏览器舞台和点歌仍在本机运行，公开开播与本地彩排均未在 ECS 验收。后续迁移需实现以下工作：
 

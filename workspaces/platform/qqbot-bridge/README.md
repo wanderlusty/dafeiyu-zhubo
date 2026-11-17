@@ -10,6 +10,6 @@
 2. 在 DSH 的服务器私有 `cordis.patch.yml` 中，为已启用的 `qqNative` 增加 `bridge: { port: 3210 }`，重启 `xiaobai-dsh.service`。普通 QQ 的 OneBot 配置不需要改。确认 `ss -ltn` 显示端口只在 `127.0.0.1:3210` 监听。
 3. 从世界目录的私有 `qq-bridge.json` 读取桥口令，填入 `/srv/xiaobai/data/qqbot/qqbot.env` 的 `DSH_QQ_BRIDGE_TOKEN`；将 AppID/AppSecret 也只填在这个私有文件，权限设为 `0600`。
 4. 安装依赖后启用 `xiaobai-qqbot.service`。先向新机器人发一条测试私聊；服务端会在 `pending-openids.json` 记录发送者 openid。核对测试时间与发送者后，才把该 openid 加入 `allowed-openids.json`，再次发消息验收。
-5. 官方私聊收发通过且重启后仍可用，再决定是否停用普通 QQ 的自动回复与 NapCat。先前普通 QQ 账号的好友关系和数字 QQ 号不会转移到官方机器人。
+5. 官方私聊收发通过且重启后仍可用后，**继续保留普通 QQ 的自动回复与 NapCat**。这是两个并行入口：普通号按数字 QQ 白名单运行，官方 Bot 按 openid 白名单运行，各自使用独立会话。先前普通 QQ 账号的好友关系和数字 QQ 号不会转移到官方机器人。
 
 `qqbot.env.example` 只是字段说明，不含有效凭据。`npm test` 用本地模拟 WebSocket 桥验证白名单、去重和消息传递，不会连接 QQ 平台或调用模型。真实私聊必须在机器人创建后另行验收。
