@@ -4,6 +4,8 @@
 
 代码不保存 AppSecret、桥口令或 QQ 消息。凭据和会话文件都放在 `/srv/xiaobai/data/qqbot/`，由 `xiaobai` 用户读取，不加入 Git。网关断线由官方 SDK 重连，进程异常由 systemd 重启。DSH Bridge 只监听服务器回环地址 `127.0.0.1:3210`。
 
+2026-11-17 在 ECS 已完成官方 C2C 私聊和单独重启服务后的回复验收；普通 QQ 小号也在并行运行。下列步骤用于新部署、凭据轮换或新发送者授权。
+
 ## 启用顺序
 
 1. 在 [QQ 开放平台](https://q.qq.com/) 创建机器人，获取 AppID 和 AppSecret，启用 C2C 私聊消息能力。平台可能要求审核或测试白名单；以创建页面实际提示为准。不要在聊天或 Git 中发送 AppSecret。

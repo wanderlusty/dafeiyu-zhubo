@@ -36,11 +36,11 @@ QQ 使用 `ghcr.io/napneko/nodenapcat:latest` 镜像，镜像摘要为 `sha256:4
 
 2026-11-16 已实测：私聊白名单只允许用户主号，自动回复开启；用户从主号发送测试私聊后收到回复，服务端计数为 `sent=1`、`failed=0`。实际 QQ 号仅保存在服务器私有配置中。服务器私有配置 `/srv/xiaobai/data/dsh/profiles/web/cordis.patch.yml` 使用 `bindHomeSession: none`，让 QQ 私聊保持独立会话。原先绑定主会话时，主会话卡在一条写日记的待审批请求上，QQ 消息已收到但无法生成回复。主会话的待审批任务仍需单独处理；这次验收只证明 QQ 私聊收发，不代表自主日程和长期稳定运行已验收。无需重启 QQ 容器来调整 DSH 的私聊绑定。
 
-2026-11-17 白天发现普通 QQ 小号在服务器上掉线：DSH 服务与 NapCat 容器都还在运行，但 OneBot WebSocket 已断开，手机登录又要求身份验证。用户扫码后普通 QQ 暂时恢复连接；这不能算 24 小时稳定性验收。不要仅凭 systemd / Docker 的“运行中”推断 QQ 能回复。
+2026-11-17 白天发现普通 QQ 小号在服务器上掉线：DSH 服务与 NapCat 容器都还在运行，但 OneBot WebSocket 已断开，手机登录又要求身份验证。用户扫码后普通 QQ 恢复连接；当天再次通过 OneBot `get_login_info`、DSH 状态和主号真实私聊回复验收。**这仍不等于连续 24 小时稳定性验收。**不要仅凭 systemd / Docker 的“运行中”推断 QQ 能回复。
 
-正在准备腾讯开放平台官方 QQ Bot 接入。适配器源码在 `workspaces/platform/qqbot-bridge/`，使用腾讯官方 Node SDK 接收 C2C 私聊，再经 DSH 本地桥送进小白角色工作区。ECS 上已安装依赖并通过模拟桥测试，DSH 桥端口 `127.0.0.1:3210` 已监听；`xiaobai-qqbot.service` **已安装但保持 disabled/inactive**。用户已在开放平台创建“小白”机器人；截至本记录尚未录入私有 AppID/AppSecret，也未进行官方 QQ 实际收发验收。普通 QQ 小号保持原配置。官方机器人是新身份，不会继承原普通 QQ 小号的好友关系。
+腾讯开放平台官方 QQ Bot 已与普通 QQ 小号并行接入。适配器源码在 `workspaces/platform/qqbot-bridge/`，使用腾讯官方 Node SDK 接收 C2C 私聊，再经 DSH 本地桥送进小白角色工作区。ECS 的 `xiaobai-qqbot.service` 已启用开机自启并处于 `active`，私有凭据文件权限为 `0600`，官方 openid 白名单当前只有用户确认的一个发送者。2026-11-17 用户从主号向官方 Bot 发送真实私聊并收到回复；单独重启官方 Bot 服务后，网关恢复并再次收到真实回复。普通 QQ 也在同日完成真实私聊回复，两者都保持运行。官方机器人是新身份，不会继承原普通 QQ 小号的好友关系。
 
-创建机器人后按 [`QQ Bot 接入说明`](../workspaces/platform/qqbot-bridge/README.md) 启用 C2C，接着在 ECS Workbench 终端运行 `python3 /srv/xiaobai/app/workspaces/operations/server/configure-qqbot-credentials.py`，在终端里输入 AppID 和隐藏输入的 AppSecret；**不要把 AppSecret 发到聊天或写进 Git**。脚本将从 DSH 私有世界目录读取桥口令，写入权限 `0600` 的 `/srv/xiaobai/data/qqbot/qqbot.env`。然后才可启动官方 Bot 服务，并先核对发送者 openid、加入私有白名单、实测回复与重启恢复。用户要求官方 Bot 与普通 QQ 小号并行运行；启用官方 Bot 后也保留旧接入。
+官方 Bot 的安装、私有凭据轮换和新发送者授权步骤见 [`QQ Bot 接入说明`](../workspaces/platform/qqbot-bridge/README.md)。需要重录凭据时在 ECS Workbench 终端运行 `python3 /srv/xiaobai/app/workspaces/operations/server/configure-qqbot-credentials.py`，在终端输入 AppID 和隐藏输入的 AppSecret；**不要把 AppSecret 发到聊天或写进 Git**。脚本从 DSH 私有世界目录读取桥口令，写入权限 `0600` 的 `/srv/xiaobai/data/qqbot/qqbot.env`。任何新增发送者都要先核对 `pending-openids.json`，再加入私有白名单。用户要求官方 Bot 与普通 QQ 小号并行运行，不要因官方 Bot 已可用而关闭旧接入。
 
 本机 SSH 隧道将 `127.0.0.1:6099` 转发到服务器 QQ WebUI，将 `127.0.0.1:13081` 转发到服务器 DSH。Workbench 网页终端断开不影响已建立的 SSH 通道或 systemd 服务。
 
@@ -55,7 +55,7 @@ systemctl is-active xiaobai-qqbot.service
 ss -ltn | grep -E ':(3081|3001|6099) '
 ```
 
-`check-onebot.mjs` 用私有 OneBot 配置的令牌在回环 WebSocket 调用 `get_login_info`，仅输出是否登录，不输出 QQ 号或令牌。`check-qq.mjs` 再核对 DSH 通道与自动回复；只有两项都通过，普通 QQ 才算当前可用。它们不能证明未来 24 小时不会触发平台身份验证。官方 Bot 需另外以真实私聊和重启后重测验收。
+`check-onebot.mjs` 用私有 OneBot 配置的令牌在回环 WebSocket 调用 `get_login_info`，仅输出是否登录，不输出 QQ 号或令牌。`check-qq.mjs` 再核对 DSH 通道与自动回复；只有两项都通过，并有真实私聊回复，普通 QQ 才算当前可用。它们不能证明未来 24 小时不会触发平台身份验证。官方 Bot 也需结合服务状态、真实私聊和重启后重测判断。
 
 这只是 **24 小时在线后台**。直播间、TTS/RVC、浏览器舞台和点歌仍在本机运行，公开开播与本地彩排均未在 ECS 验收。后续迁移需实现以下工作：
 

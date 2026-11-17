@@ -45,7 +45,7 @@ pnpm --dir packages/dsh-livestream build
 
 ## 已知未完成项
 
-1. ECS 已有最小后台部署，包含 DSH、角色记忆与 QQ OneBot 容器；普通 QQ 曾掉线并需手机身份验证。官方 QQ Bot 适配器已准备但还未获取平台凭据或真实验收。当前状态以 `docs/DEPLOYMENT.md` 为准。Windows/WSL 路径、直播画面采集、TTS/RVC GPU 部署和 B 站登录仍未迁移。
+1. ECS 已有最小后台部署，包含 DSH、角色记忆、普通 QQ OneBot 容器与腾讯官方 QQ Bot 服务。两条 QQ 入口于 2026-11-17 均通过真实私聊回复；官方 Bot 在服务重启后再次通过。普通 QQ 曾掉线并需手机身份验证，连续 24 小时稳定性仍未验收。当前状态以 `docs/DEPLOYMENT.md` 为准。Windows/WSL 路径、直播画面采集、TTS/RVC GPU 部署和 B 站登录仍未迁移。
 2. 当前控制台只允许本机访问；不能直接把 3090 端口暴露到公网。
 3. 点歌获取、分离、换声与播放依赖本地模型及下载工具；`README` 中的历史成功案例不代表每首歌都能稳定生成。
 4. 上游插件源码与本地补丁需一起构建，不能只安装公开 npm 版就获得小白的功能。
