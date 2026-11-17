@@ -908,7 +908,7 @@ index 6d6fc80..bd6fb6b 100644
 +  async function createShowSession(ctx: HostContext): Promise<string> {
 +    const controller = ctx.get?.('sessionController');
 +    if (!controller?.create || !controller?.resolveAgent) throw new Error('会话控制器尚未就绪');
-+    const cwd = join(process.env.DSH_HOME ?? process.cwd(), 'worlds', 'ds', 'room');
++    const cwd = join(process.env.DSH_HOME ?? process.cwd(), 'worlds', 'ds', 'live');
 +    const workspace = await ctx.get?.('workspaceRegistry')?.resolveByPath?.(cwd);
 +    const created = await controller.create({ ...(workspace?.id ? { workspaceId: workspace.id } : { cwd }), agentPreset: 'dsh-livestream' });
 +    const resolved = await controller.resolveAgent(created.sessionId);

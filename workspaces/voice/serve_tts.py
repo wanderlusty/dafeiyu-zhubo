@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -78,6 +79,7 @@ def main() -> None:
                 text = request['text'].strip()
                 if not isinstance(text, str) or not (1 <= len(text) <= 400):
                     raise ValueError('Invalid text')
+                started = time.perf_counter()
                 with lock, torch.inference_mode():
                     if args.delivery:
                         generated = voice.inference_instruct2(
@@ -89,6 +91,7 @@ def main() -> None:
                             text_frontend=False)
                     chunks = [x['tts_speech'].detach().cpu().numpy().reshape(-1)
                               for x in generated]
+                tts_ms = round((time.perf_counter() - started) * 1000)
                 if not chunks:
                     raise RuntimeError('No audio')
                 samples = np.concatenate(chunks)
@@ -100,8 +103,10 @@ def main() -> None:
                 wav = io.BytesIO()
                 sf.write(wav, samples, voice.sample_rate, format='WAV', subtype='PCM_16')
                 wav_bytes = wav.getvalue()
+                rvc_ms = 0
                 if args.rvc_url:
                     try:
+                        rvc_started = time.perf_counter()
                         request = urllib.request.Request(
                             args.rvc_url, data=wav_bytes, method='POST',
                             headers={'Content-Type': 'audio/wav'},
@@ -113,7 +118,8 @@ def main() -> None:
                             if not (1000 <= len(wav_bytes) <= 10_000_000):
                                 raise RuntimeError('RVC audio size is invalid')
                     except Exception as error:
-                        print(f'RVC unavailable, keeping CosyVoice3 audio: {error}', flush=True)
+                        raise RuntimeError(f'RVC conversion failed: {error}') from error
+                    rvc_ms = round((time.perf_counter() - rvc_started) * 1000)
                 encoded = subprocess.run(
                     ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-i', 'pipe:0',
                      '-ac', '1', '-ar', '24000', '-b:a', '128k', '-f', 'mp3', 'pipe:1'],
@@ -122,6 +128,7 @@ def main() -> None:
                 ).stdout
                 if len(encoded) < 1000:
                     raise RuntimeError('Empty MP3')
+                print(f'speech chars={len(text)} tts_ms={tts_ms} rvc_ms={rvc_ms} total_ms={round((time.perf_counter() - started) * 1000)}', flush=True)
                 self.send_response(200)
                 self.send_header('Content-Type', 'audio/mpeg')
                 self.send_header('Content-Length', str(len(encoded)))

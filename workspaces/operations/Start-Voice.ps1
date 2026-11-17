@@ -27,16 +27,30 @@ Start-Process -FilePath 'wsl.exe' -ArgumentList @('-e', $python, $script, '--con
     -WorkingDirectory $project -WindowStyle Hidden `
     -RedirectStandardOutput $output -RedirectStandardError $errorOutput | Out-Null
 if ($NoWait) { return }
+$ready = $false
 for ($i = 0; $i -lt 90; $i++) {
     Start-Sleep -Seconds 1
     try {
         $health = Invoke-RestMethod -Uri $url -TimeoutSec 2
         if ($health.ready) {
-            try { & (Join-Path $project '回收WSL文件缓存.ps1') | Out-Null }
-            catch { Write-Warning "语音已就绪，但 WSL 缓存回收失败：$($_.Exception.Message)" }
-            Write-Output '小白 CosyVoice3 已就绪：http://127.0.0.1:7391'
-            return
+            $ready = $true
+            break
         }
     } catch {}
 }
-throw "小白 CosyVoice3 启动超时。请查看 $errorOutput"
+if (-not $ready) { throw "小白 CosyVoice3 启动超时。请查看 $errorOutput" }
+
+$warmupFile = Join-Path $project 'outputs\xiaobai-voice-warmup.mp3'
+try {
+    Invoke-WebRequest -Uri 'http://127.0.0.1:7391/synthesize' -Method Post `
+        -ContentType 'application/json; charset=utf-8' -Body '{"text":"小白在这儿。"}' `
+        -OutFile $warmupFile -TimeoutSec 90 | Out-Null
+    if ((Get-Item -LiteralPath $warmupFile).Length -lt 1000) { throw '预热音频为空' }
+} catch {
+    throw "小白语音端到端预热失败：$($_.Exception.Message)。请查看 $errorOutput"
+} finally {
+    Remove-Item -LiteralPath $warmupFile -ErrorAction SilentlyContinue
+}
+try { & (Join-Path $project 'workspaces\operations\回收WSL文件缓存.ps1') | Out-Null }
+catch { Write-Warning "语音已就绪，但 WSL 缓存回收失败：$($_.Exception.Message)" }
+Write-Output '小白 CosyVoice3 + RVC 已预热：http://127.0.0.1:7391'

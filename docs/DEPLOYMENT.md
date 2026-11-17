@@ -40,6 +40,14 @@ QQ 使用 `ghcr.io/napneko/nodenapcat:latest` 镜像，镜像摘要为 `sha256:4
 
 腾讯开放平台官方 QQ Bot 已与普通 QQ 小号并行接入。适配器源码在 `workspaces/platform/qqbot-bridge/`，使用腾讯官方 Node SDK 接收 C2C 私聊，再经 DSH 本地桥送进小白角色工作区。ECS 的 `xiaobai-qqbot.service` 已启用开机自启并处于 `active`，私有凭据文件权限为 `0600`，官方 openid 白名单当前只有用户确认的一个发送者。2026-11-17 用户从主号向官方 Bot 发送真实私聊并收到回复；单独重启官方 Bot 服务后，网关恢复并再次收到真实回复。普通 QQ 也在同日完成真实私聊回复，两者都保持运行。官方机器人是新身份，不会继承原普通 QQ 小号的好友关系。
 
+2026-11-17 已在 ECS 私有世界目录安装 QQ／刷视频／直播的分域记忆模板；服务器当前只运行 QQ，刷视频与直播仍由本机负责。安装器 `workspaces/operations/server/install-memory-layout.py` 只新建缺失的场景文档；旧统一 `AGENTS.md` 匹配已知模板才备份并迁移，已有自写的 `我是谁.md` 仅替换过时段落并留备份。详细三层模型及旧归档限制见 [`MEMORY_ARCHITECTURE.md`](MEMORY_ARCHITECTURE.md)。后续从 Git 更新后可运行：
+
+```bash
+python3 /srv/xiaobai/app/workspaces/operations/server/install-memory-layout.py --world /srv/xiaobai/data/dsh/worlds/ds --migrate-self --migrate-persona
+```
+
+本机 `Setup-Local.ps1` 将刷视频 `workspace` 设到 `worlds/ds/bili-duty`，直播定制包 v13 将新直播会话设到 `worlds/ds/live`。本次**未公开开播**；做过一次本地彩排，但舞台音频在 120 秒内未到达，见 [`VOICE-CHECK-2026-11-17.md`](VOICE-CHECK-2026-11-17.md)。旧 `archive.sqlite` 与全局 `diary/` 保留，历史内容可能仍可跨场景检索。
+
 官方 Bot 的安装、私有凭据轮换和新发送者授权步骤见 [`QQ Bot 接入说明`](../workspaces/platform/qqbot-bridge/README.md)。需要重录凭据时在 ECS Workbench 终端运行 `python3 /srv/xiaobai/app/workspaces/operations/server/configure-qqbot-credentials.py`，在终端输入 AppID 和隐藏输入的 AppSecret；**不要把 AppSecret 发到聊天或写进 Git**。脚本从 DSH 私有世界目录读取桥口令，写入权限 `0600` 的 `/srv/xiaobai/data/qqbot/qqbot.env`。任何新增发送者都要先核对 `pending-openids.json`，再加入私有白名单。用户要求官方 Bot 与普通 QQ 小号并行运行，不要因官方 Bot 已可用而关闭旧接入。
 
 本机 SSH 隧道将 `127.0.0.1:6099` 转发到服务器 QQ WebUI，将 `127.0.0.1:13081` 转发到服务器 DSH。Workbench 网页终端断开不影响已建立的 SSH 通道或 systemd 服务。

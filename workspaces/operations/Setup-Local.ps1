@@ -41,13 +41,13 @@ if ($LASTEXITCODE -ne 0) { throw 'dsh-bili-scroll 安装失败' }
 if ($LASTEXITCODE -ne 0) { throw 'dsh-world 安装失败' }
 & pnpm --dir (Join-Path $env:DSH_HOME 'profiles\web') add '@snowluma/sdk@2.2.1'
 if ($LASTEXITCODE -ne 0) { throw 'QQ OneBot SDK 安装失败' }
-$livePackage = Join-Path $vendor 'overrides\dsh-livestream-xiaobai-song-queue-v12-0.0.1.tgz'
+$livePackage = Join-Path $vendor 'overrides\dsh-livestream-xiaobai-memory-v13-0.0.1.tgz'
 if (-not (Test-Path -LiteralPath $livePackage)) {
     throw '缺少小白直播插件包。可按 docs/HANDOFF.md 从源码补丁构建，或从本机私有运行文件中恢复。'
 }
 if (Test-Path -LiteralPath $livePackage) {
     $liveHash = (Get-FileHash -LiteralPath $livePackage -Algorithm SHA256).Hash
-    if ($liveHash -ne '6FDA5FBEEBC7EE095BAD6FC1F7776FB517DA56E16349A57FDD02B3EFACA81442') { throw '本地直播插件安装包 SHA-256 不匹配' }
+    if ($liveHash -ne '0B4E36AF3E6FF08265A8589749AB18FB22882515E8C02CC0EC73269B1F57EE8F') { throw '本地直播插件安装包 SHA-256 不匹配' }
     & npx --yes '@deepseek-ai/dsh@0.2.1-rc.5' plugin --profile web add $livePackage
     if ($LASTEXITCODE -ne 0) { throw '本地直播插件安装失败' }
 }
@@ -80,6 +80,21 @@ $workspaceInstructions = Join-Path $worldDir 'room\AGENTS.md'
 if (-not (Test-Path -LiteralPath $workspaceInstructions)) {
     Copy-Item -LiteralPath (Join-Path $project 'workspaces\platform\config\workspace-AGENTS.md') -Destination $workspaceInstructions
 }
+$memoryTemplates = @(
+    @{ Source = 'shared.md'; Target = (Join-Path $worldDir 'shared.md') },
+    @{ Source = 'qq.md'; Target = (Join-Path $worldDir 'room\memory\qq.md') },
+    @{ Source = 'BILI-AGENTS.md'; Target = (Join-Path $worldDir 'bili-duty\AGENTS.md') },
+    @{ Source = 'bili.md'; Target = (Join-Path $worldDir 'bili-duty\memory.md') },
+    @{ Source = 'LIVE-AGENTS.md'; Target = (Join-Path $worldDir 'live\AGENTS.md') },
+    @{ Source = 'live.md'; Target = (Join-Path $worldDir 'live\memory.md') }
+)
+foreach ($item in $memoryTemplates) {
+    $source = Join-Path $project ('workspaces\platform\config\memory\' + $item.Source)
+    if (-not (Test-Path -LiteralPath $item.Target)) {
+        New-Item -ItemType Directory -Force -Path (Split-Path $item.Target -Parent) | Out-Null
+        Copy-Item -LiteralPath $source -Destination $item.Target
+    }
+}
 
 if (-not (Test-Path -LiteralPath $venvPy)) {
     & uv venv --seed --python 3.12 (Join-Path $duty '.venv')
@@ -89,7 +104,7 @@ if (-not (Test-Path -LiteralPath $venvPy)) {
 if ($LASTEXITCODE -ne 0) { throw '刷 B 站 Python 依赖安装失败' }
 $cfg = [System.IO.File]::ReadAllText($cfgPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
 $cfg | Add-Member -NotePropertyName pythonPath -NotePropertyValue $venvPy -Force
-$cfg | Add-Member -NotePropertyName workspace -NotePropertyValue (Join-Path $worldDir 'room') -Force
+$cfg | Add-Member -NotePropertyName workspace -NotePropertyValue (Join-Path $worldDir 'bili-duty') -Force
 $cfg | Add-Member -NotePropertyName personaPrompt -NotePropertyValue '' -Force
 [System.IO.File]::WriteAllText($cfgPath, ($cfg | ConvertTo-Json -Depth 10), $utf8NoBom)
 
@@ -101,5 +116,7 @@ if (-not (Test-Path -LiteralPath $biliPy)) {
 if ($LASTEXITCODE -ne 0) { throw 'bili-cli 安装失败' }
 & $venvPy -c 'import bilibili_api, mcp, qrcode, PIL'
 if ($LASTEXITCODE -ne 0) { throw '刷 B 站 Python 自检失败' }
+& $venvPy (Join-Path $project 'workspaces\operations\server\install-memory-layout.py') --world $worldDir --migrate-self --migrate-persona
+if ($LASTEXITCODE -ne 0) { throw '小白记忆工作区迁移失败' }
 Write-Host 'bili-duty Python imports OK'
 Write-Host '本地环境已安装。双击“启动小白.cmd”打开控制台。'
