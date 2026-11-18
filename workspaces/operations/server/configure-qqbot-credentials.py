@@ -39,7 +39,13 @@ with open(temp, 'w', encoding='utf-8', opener=lambda path, flags: os.open(path, 
     output.write(body)
 os.chmod(temp, 0o600)
 os.replace(temp, target)
-for name, default in (('allowed-openids.json', '[]\n'), ('pending-openids.json', '{}\n')):
+private_defaults = (
+    ('allowed-openids.json', '[]\n'),
+    ('pending-openids.json', '{}\n'),
+    ('allowed-groups.json', '[]\n'),
+    ('pending-groups.json', '{}\n'),
+)
+for name, default in private_defaults:
     file = PRIVATE / name
     if not file.exists():
         with open(file, 'w', encoding='utf-8', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
@@ -47,7 +53,7 @@ for name, default in (('allowed-openids.json', '[]\n'), ('pending-openids.json',
     os.chmod(file, 0o600)
 uid = __import__('pwd').getpwnam('xiaobai').pw_uid
 gid = __import__('grp').getgrnam('xiaobai').gr_gid
-for file in (target, PRIVATE / 'allowed-openids.json', PRIVATE / 'pending-openids.json'):
+for file in (target, *(PRIVATE / name for name, _ in private_defaults)):
     os.chown(file, uid, gid)
 os.chmod(PRIVATE, 0o700)
 os.chown(PRIVATE, uid, gid)

@@ -1,10 +1,12 @@
 # 腾讯官方 QQ Bot → 小白
 
-这个适配器使用腾讯 `@tencent-connect/qqbot-nodejs` 的 WebSocket Gateway 接收 **C2C 私聊**，再把文字送到 DSH 世界的本地 QQ Bridge。它仅监听官方机器人的新身份，不会接管普通 QQ 小号。群消息、图片与语音消息目前忽略。只有 `allowed-openids.json` 中的 openid 可以触发模型；陌生人的 openid 只记录到服务器私有的 `pending-openids.json`，不回复。
+这个适配器使用腾讯 `@tencent-connect/qqbot-nodejs` 的 WebSocket Gateway 接收 **C2C 私聊**，再把文字送到 DSH 世界的本地 QQ Bridge。它仅监听官方机器人的新身份，不会接管普通 QQ 小号。只有 `allowed-openids.json` 中的 openid 可以触发私聊模型；陌生人的 openid 只记录到服务器私有的 `pending-openids.json`，不回复。群聊默认关闭，只有 `allowed-groups.json` 中的 group openid 且明确 @ 机器人时才回复；未授权群只记录到 `pending-groups.json`。每个群使用独立会话，图片与语音消息目前忽略。长回答最多拆成两条，每条 360 字符；聊天提示要求模型通常只说一两句。
 
 代码不保存 AppSecret、桥口令或 QQ 消息。凭据和会话文件都放在 `/srv/xiaobai/data/qqbot/`，由 `xiaobai` 用户读取，不加入 Git。网关断线由官方 SDK 重连，进程异常由 systemd 重启。DSH Bridge 只监听服务器回环地址 `127.0.0.1:3210`。
 
 2026-11-17 在 ECS 已完成官方 C2C 私聊和单独重启服务后的回复验收；普通 QQ 小号也在并行运行。下列步骤用于新部署、凭据轮换或新发送者授权。
+
+本地可用 `node check-chat-latency.mjs <qq-bridge.json> "在吗？"` 通过真实 DSH 桥测量一条聊天回复的端到端耗时；桥端口默认 `3210`，可用 `XIAOBAI_QQ_BRIDGE_PORT` 覆盖。它不会发送到 QQ。
 
 ## 启用顺序
 

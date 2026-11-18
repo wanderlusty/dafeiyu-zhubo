@@ -13,10 +13,13 @@ LEGACY_AGENTS_SHA256 = "01550c4b8e7181e5442e8fbf42d7d83f01c4857726da4790fb100d45
 FILES = {
     "shared.md": "shared.md",
     "qq.md": "room/memory/qq.md",
+    "qq-style.md": "room/memory/qq-style.md",
     "BILI-AGENTS.md": "bili-duty/AGENTS.md",
     "bili.md": "bili-duty/memory.md",
     "LIVE-AGENTS.md": "live/AGENTS.md",
     "live.md": "live/memory.md",
+    "SERVICE-AGENTS.md": "service/AGENTS.md",
+    "service.md": "service/memory.md",
 }
 OLD_SELF_INTRO = "我是小白，一个在这台电脑上本地试播的 DeepSeek AI 虚拟主播。我的频道、QQ 和直播间属于同一个持续成长的角色，但目前只有已经验收的连接才算真实经历。"
 NEW_SELF_INTRO = "我是小白，一名 AI 虚拟主播。QQ 后台可在服务器运行，语音、浏览器舞台和直播仍在本机；只有经过验收的连接才算真实经历。QQ、浏览和直播属于同一个角色，但各自的记忆默认分开。"

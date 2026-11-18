@@ -7,6 +7,9 @@ $venvPy = Join-Path $duty '.venv\Scripts\python.exe'
 $biliPy = Join-Path $project '.venv-bili-cli\Scripts\python.exe'
 
 New-Item -ItemType Directory -Force -Path $vendor, $duty | Out-Null
+$dshHomeItem = Get-Item -Force -LiteralPath $env:DSH_HOME
+$dshHomeTarget = $dshHomeItem.Target
+$dshHomeRoot = if ($dshHomeTarget) { [string]($dshHomeTarget | Select-Object -First 1) } else { $env:DSH_HOME }
 $cfgPath = Join-Path $duty 'config.json'
 if (-not (Test-Path -LiteralPath $cfgPath)) {
     $dutyTemplate = Join-Path $project 'workspaces\platform\config\bili-duty.readonly.json'
@@ -14,6 +17,42 @@ if (-not (Test-Path -LiteralPath $cfgPath)) {
         $dutyTemplate = Join-Path $project 'workspaces\platform\config\bili-duty.readonly.example.json'
     }
     Copy-Item -LiteralPath $dutyTemplate -Destination $cfgPath
+}
+
+function Set-DshConfigBlockValue {
+    param(
+        [Parameter(Mandatory)] [string] $Path,
+        [Parameter(Mandatory)] [string] $BlockId,
+        [Parameter(Mandatory)] [string] $Key,
+        [Parameter(Mandatory)] [string] $Value
+    )
+    $original = [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8)
+    $blockPattern = [regex]::new(
+        '(?ms)^- id: ' + [regex]::Escape($BlockId) + '\s*\r?\n(?:(?!^- id:).)*'
+    )
+    $blocks = $blockPattern.Matches($original)
+    if ($blocks.Count -ne 1) {
+        throw "Expected one '$BlockId' block in $Path"
+    }
+    $block = $blocks[0]
+    $valuePattern = [regex]::new(
+        '(?m)^(    ' + [regex]::Escape($Key) + ':[ \t]*)[^\r\n]*'
+    )
+    if ($valuePattern.Matches($block.Value).Count -ne 1) {
+        throw "Expected one '$Key' value in '$BlockId' block of $Path"
+    }
+    $updatedBlock = $valuePattern.Replace($block.Value, [System.Text.RegularExpressions.MatchEvaluator]{
+        param($match)
+        $match.Groups[1].Value + $Value
+    }, 1)
+    if ($updatedBlock -eq $block.Value) { return }
+    $updated = $original.Substring(0, $block.Index) + $updatedBlock +
+        $original.Substring($block.Index + $block.Length)
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $backup = "$Path.before-$BlockId-$stamp"
+    if (Test-Path -LiteralPath $backup) { throw "Backup already exists: $backup" }
+    Copy-Item -LiteralPath $Path -Destination $backup
+    [System.IO.File]::WriteAllText($Path, $updated, (New-Object System.Text.UTF8Encoding($false)))
 }
 
 $packages = @(
@@ -65,9 +104,14 @@ if ($patchText -notmatch '(?m)^- id: dsh-world\s*$') {
     [System.IO.File]::AppendAllText($profilePatch, "`n" + $worldPatch, $utf8NoBom)
 }
 
-$worldDir = Join-Path $env:DSH_HOME 'worlds\ds'
+$worldDir = Join-Path $dshHomeRoot 'worlds\ds'
 $personaPath = Join-Path $worldDir 'persona.md'
 New-Item -ItemType Directory -Force -Path $worldDir | Out-Null
+Set-DshConfigBlockValue -Path $profilePatch -BlockId 'bili-scroll' -Key 'workspace' `
+    -Value (Join-Path $worldDir 'bili-duty')
+& py -3 (Join-Path $project 'workspaces\operations\server\migrate-diary-into-room.py') `
+    --world $worldDir --config $profilePatch --apply
+if ($LASTEXITCODE -ne 0) { throw '小白日记目录迁移失败' }
 if (-not (Test-Path -LiteralPath $personaPath)) {
     Copy-Item -LiteralPath (Join-Path $project 'workspaces\platform\config\world-persona.md') -Destination $personaPath
 }
@@ -83,10 +127,13 @@ if (-not (Test-Path -LiteralPath $workspaceInstructions)) {
 $memoryTemplates = @(
     @{ Source = 'shared.md'; Target = (Join-Path $worldDir 'shared.md') },
     @{ Source = 'qq.md'; Target = (Join-Path $worldDir 'room\memory\qq.md') },
+    @{ Source = 'qq-style.md'; Target = (Join-Path $worldDir 'room\memory\qq-style.md') },
     @{ Source = 'BILI-AGENTS.md'; Target = (Join-Path $worldDir 'bili-duty\AGENTS.md') },
     @{ Source = 'bili.md'; Target = (Join-Path $worldDir 'bili-duty\memory.md') },
     @{ Source = 'LIVE-AGENTS.md'; Target = (Join-Path $worldDir 'live\AGENTS.md') },
-    @{ Source = 'live.md'; Target = (Join-Path $worldDir 'live\memory.md') }
+    @{ Source = 'live.md'; Target = (Join-Path $worldDir 'live\memory.md') },
+    @{ Source = 'SERVICE-AGENTS.md'; Target = (Join-Path $worldDir 'service\AGENTS.md') },
+    @{ Source = 'service.md'; Target = (Join-Path $worldDir 'service\memory.md') }
 )
 foreach ($item in $memoryTemplates) {
     $source = Join-Path $project ('workspaces\platform\config\memory\' + $item.Source)

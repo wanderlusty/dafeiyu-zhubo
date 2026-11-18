@@ -1,4 +1,4 @@
-/** Local-only integration check: a rehearsal line reaches the stage with MP3 audio. */
+/** Local-only integration check: the stage speaks and completes a simulated viewer reply. */
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,8 +6,10 @@ import { fileURLToPath } from 'node:url';
 const origin = 'http://127.0.0.1:3090';
 const project = fileURLToPath(new URL('../../', import.meta.url));
 const output = join(project, 'outputs', 'xiaobai-stage-rehearsal.mp3');
+const replyOutput = join(project, 'outputs', 'xiaobai-stage-rehearsal-reply.mp3');
+const replyTailOutput = join(project, 'outputs', 'xiaobai-stage-rehearsal-reply-tail.mp3');
 const controller = new AbortController();
-const timer = setTimeout(() => controller.abort(new Error('No spoken stage event within 120 seconds')), 120_000);
+const timer = setTimeout(() => controller.abort(new Error('No complete spoken stage reply within 180 seconds')), 180_000);
 const get = async (path) => {
   const response = await fetch(origin + path, { signal: controller.signal });
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`);
@@ -37,6 +39,7 @@ try {
   const decoder = new TextDecoder();
   let buffer = '';
   const eventLoop = (async () => {
+    const lines = [];
     for (;;) {
       const { value, done } = await reader.read();
       if (done) throw new Error('Stage SSE closed before audio');
@@ -54,8 +57,11 @@ try {
         ack.searchParams.set('id', event.id);
         await fetch(ack, { method: 'POST', signal: controller.signal });
         if (!audio || audio.length < 1000) throw new Error('Stage sent a silent line');
-        await writeFile(output, audio);
-        return { text: event.text, bytes: audio.length, output };
+        const path = [output, replyOutput, replyTailOutput][lines.length];
+        if (!path) throw new Error('Stage sent more lines than this check expects');
+        await writeFile(path, audio);
+        lines.push({ text: event.text, bytes: audio.length, output: path });
+        if (lines.length === 3) return { opener: lines[0], reply: lines.slice(1) };
       }
     }
   })();

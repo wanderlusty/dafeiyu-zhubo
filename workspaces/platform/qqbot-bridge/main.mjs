@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from 'node:fs';
-import { QQBot } from '@tencent-connect/qqbot-nodejs';
+import { dirname, join } from 'node:path';
+import { QQBot, mentionGate } from '@tencent-connect/qqbot-nodejs';
 import { BridgeClient } from './bridge-client.mjs';
 import { OfficialQqAdapter } from './adapter.mjs';
 
@@ -15,6 +16,8 @@ const bridgeToken = required('DSH_QQ_BRIDGE_TOKEN');
 const allowFile = required('QQBOT_ALLOWED_OPENIDS_FILE');
 const pendingFile = required('QQBOT_PENDING_OPENIDS_FILE');
 const sessionFile = required('QQBOT_SESSION_FILE');
+const allowGroupFile = join(dirname(allowFile), 'allowed-groups.json');
+const pendingGroupFile = join(dirname(allowFile), 'pending-groups.json');
 if (!/^ws:\/\/127\.0\.0\.1:\d+$/.test(bridgeUrl)) throw new Error('Bridge must bind to localhost');
 
 const savePrivateJson = (file, value) => {
@@ -35,6 +38,15 @@ const unapproved = (openid) => {
   pending[openid] = new Date().toISOString();
   savePrivateJson(pendingFile, pending);
 };
+const allowedGroup = (groupOpenid) => {
+  const ids = readJson(allowGroupFile, []);
+  return Array.isArray(ids) && ids.includes(groupOpenid);
+};
+const unapprovedGroup = (groupOpenid) => {
+  const pending = readJson(pendingGroupFile, {});
+  pending[groupOpenid] = new Date().toISOString();
+  savePrivateJson(pendingGroupFile, pending);
+};
 const sessionPersistence = {
   load: () => readJson(sessionFile, null),
   save: (session) => savePrivateJson(sessionFile, session),
@@ -49,7 +61,8 @@ const logger = {
 const bot = new QQBot({ appId, appSecret, markdownSupport: false, sessionPersistence,
   logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} } });
 const bridge = new BridgeClient({ url: bridgeUrl, token: bridgeToken, logger });
-const adapter = new OfficialQqAdapter({ bot, bridge, allowed, unapproved, logger });
+const adapter = new OfficialQqAdapter({ bot, bridge, allowed, unapproved, allowedGroup, unapprovedGroup, logger });
+bot.use(mentionGate({ requireMentionInGroup: true, ignoreOtherMentions: true }));
 bot.on('ready', () => logger.info('QQ Bot connected'));
 bot.on('resumed', () => logger.info('QQ Bot resumed'));
 bot.on('disconnected', () => logger.warn('QQ Bot disconnected'));

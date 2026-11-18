@@ -15,6 +15,7 @@
       ownerQQ: ''
       allowGroups: []
       autoReply: false
-      bindHomeSession: owner
+      batchQuietMs: 800
+      bindHomeSession: none
       snowlumaHome: ''
       supervise: false

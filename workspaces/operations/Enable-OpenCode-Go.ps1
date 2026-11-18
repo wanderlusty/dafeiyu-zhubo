@@ -36,11 +36,19 @@ if (-not $template.Contains($marker)) {
     }
 }
 
-# Match the web profile's reasoning setting in the unattended Bilibili duty
-# profile and its reinstall template.
+# Chat replies use low reasoning to keep QQ responsive. Unattended Bilibili
+# duty keeps high reasoning because its work is slower and more analytical.
+$webProfilePath = Join-Path $env:DSH_HOME 'profiles\web\cordis.patch.yml'
 $dutyProfilePath = Join-Path $env:DSH_HOME 'profiles\bili-duty\cordis.patch.yml'
 $dutyModelPattern = [regex]'(?m)^(- id: agent-default-model\r?\n  config:\r?\n    provider: opencode-go\r?\n    model: deepseek-v4\.1-flash)(?:\r?\n    reasoningEffort: [^\r\n]+)?'
-foreach ($profilePath in @($dutyProfilePath, $templatePath)) {
+$reasoningTargets = @(
+    @{ Path = $webProfilePath; Effort = 'low' },
+    @{ Path = $dutyProfilePath; Effort = 'high' },
+    @{ Path = $templatePath; Effort = 'high' }
+)
+foreach ($target in $reasoningTargets) {
+    $profilePath = $target.Path
+    $effort = $target.Effort
     if (-not (Test-Path -LiteralPath $profilePath)) { continue }
     $profileText = [System.IO.File]::ReadAllText($profilePath, [System.Text.Encoding]::UTF8)
     if ($dutyModelPattern.Matches($profileText).Count -ne 1) {
@@ -49,7 +57,7 @@ foreach ($profilePath in @($dutyProfilePath, $templatePath)) {
     $profileText = $dutyModelPattern.Replace($profileText, [System.Text.RegularExpressions.MatchEvaluator]{
         param($match)
         $lineEnding = if ($match.Value.Contains("`r`n")) { "`r`n" } else { "`n" }
-        $match.Groups[1].Value + $lineEnding + '    reasoningEffort: high'
+        $match.Groups[1].Value + $lineEnding + '    reasoningEffort: ' + $effort
     }, 1)
     [System.IO.File]::WriteAllText($profilePath, $profileText, $utf8NoBom)
 }
